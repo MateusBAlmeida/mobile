@@ -1,22 +1,11 @@
-import { StatusBar } from 'expo-status-bar'
-import { ImageBackground, Text, TouchableOpacity, View } from 'react-native'
+import { Text, TouchableOpacity, View } from 'react-native'
+import * as SecureStore from 'expo-secure-store'
+import { useRouter } from 'expo-router'
 
-import {
-  useFonts,
-  Roboto_400Regular,
-  Roboto_700Bold,
-} from '@expo-google-fonts/roboto'
-
-import { BaiJamjuree_700Bold } from '@expo-google-fonts/bai-jamjuree'
-
-import blurBg from './src/assets/bg-blur.png'
-import Stripes from './src/assets/stripes.svg'
-import NLWLogo from './src/assets/nlw-spacetime-logo.svg'
-import { styled } from 'nativewind'
+import NLWLogo from '../src/assets/nlw-spacetime-logo.svg'
 import { makeRedirectUri, useAuthRequest } from 'expo-auth-session'
 import { useEffect } from 'react'
-
-const StyledStripes = styled(Stripes)
+import { api } from '../src/lib/api'
 
 const discovery = {
   authorizationEndpoint: 'https://github.com/login/oauth/authorize',
@@ -26,7 +15,8 @@ const discovery = {
 }
 
 export default function App() {
-  const [request, response, signInWithGithub] = useAuthRequest(
+  const router = useRouter()
+  const [, response, signInWithGithub] = useAuthRequest(
     {
       clientId: 'ce0862f7880150735173',
       scopes: ['identity'],
@@ -37,38 +27,33 @@ export default function App() {
     discovery,
   )
 
-  const [hasLoadedFonts] = useFonts({
-    Roboto_400Regular,
-    Roboto_700Bold,
-    BaiJamjuree_700Bold,
-  })
+  async function handleGithubOAuthCode(code: string) {
+    const response = await api.post('/register', {
+      code,
+    })
+    const { token } = response.data
+
+    await SecureStore.setItemAsync('token', token)
+
+    router.push('/memories')
+  }
 
   useEffect(() => {
-    console.log(
-      makeRedirectUri({
-        scheme: 'nlwspacetime',
-      }),
-    )
+    // console.log(
+    //   makeRedirectUri({
+    //     scheme: 'nlwspacetime',
+    //   }),
+    // )
     if (response?.type === 'success') {
       const { code } = response.params
 
-      console.log(code)
+      handleGithubOAuthCode(code)
     }
   }, [response])
 
-  if (!hasLoadedFonts) {
-    return null
-  }
-
   return (
-    <ImageBackground
-      source={blurBg}
-      className=" relative flex-1 items-center bg-gray-900 px-8 py-10"
-      imageStyle={{ position: 'absolute', left: '-100%' }}
-    >
-      <StyledStripes className="absolute left-2" />
-
-      <View className="flex-1 items-center justify-center gap-6">
+    <View className="relative flex-1 items-center justify-center px-8 py-10">
+      <View className="relative flex-1 items-center justify-center gap-6 px-8">
         <NLWLogo />
 
         <View className="space-y-2">
@@ -93,7 +78,6 @@ export default function App() {
       <Text className="text-center font-body text-sm leading-relaxed text-gray-200">
         Feito com 💜 no NLW da Rocketseat
       </Text>
-      <StatusBar style="light" />
-    </ImageBackground>
+    </View>
   )
 }
